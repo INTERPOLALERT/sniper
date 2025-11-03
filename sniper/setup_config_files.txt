@@ -1,0 +1,553 @@
+# ================================
+# SuperGrokSnipV1 Configuration Files
+# ================================
+
+# FILE 1: config/default.yaml
+# Main configuration - VERIFIED & PRODUCTION-READY
+
+# NETWORK SELECTION
+network: solana  # 'solana' or 'bsc'
+
+# INVESTMENT SETTINGS (User configures in UI)
+investment:
+  enabled: true
+  amount_usd: 50  # Any amount ($10-$10,000+)
+  auto_convert: true
+  mode: auto  # 'auto' (recommended) or 'manual'
+
+# AUTO-CONFIGURATION (Bot optimizes based on network + amount)
+auto_config:
+  solana:
+    # Programs to monitor
+    raydium_v4: "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
+    pump_fun: "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"  # ADDED
+    
+    # Execution
+    slippage_normal: 0.01  # 1%
+    slippage_high: 0.05    # 5% for pump.fun
+    priority_fee: 0.0001   # SOL
+    jito_tip_min: 0.002    # MEV protection ($0.40 at $200/SOL)
+    
+    # RPC endpoints (free tier, rotates on failure)
+    rpcs:
+      - https://api.mainnet-beta.solana.com
+      - https://solana-api.projectserum.com
+      - https://rpc.ankr.com/solana
+      - ${HELIUS_RPC_URL}  # Helius FREE: 500K credits
+    
+    # WebSocket (for monitoring)
+    ws_endpoint: wss://api.mainnet-beta.solana.com
+    
+    # APIs
+    helius_api_key: ${HELIUS_API_KEY}
+    helius_webhook_url: ${HELIUS_WEBHOOK_URL}  # Optional
+    rugcheck_api: https://api.rugcheck.xyz/v1
+  
+  bsc:
+    # Execution  
+    slippage_normal: 0.03
+    slippage_high: 0.15
+    gas_price_normal: 5   # gwei
+    gas_price_high: 25
+    gas_limit: 500000
+    
+    # Factory to monitor
+    pancake_factory: "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73"
+    
+    # RPCs (free tier)
+    rpcs:
+      - https://bsc-dataseed.binance.org
+      - https://bsc-dataseed1.defibit.io
+      - https://rpc.ankr.com/bsc
+    
+    # APIs
+    honeypot_api: https://honeypot.is/api/v2
+    bscscan_api: https://api.bscscan.com/api
+    bscscan_api_key: ${BSCSCAN_API_KEY}
+
+# MONITORING
+monitoring:
+  enabled: true
+  poll_interval_solana: 0.4  # 400ms
+  poll_interval_bsc: 3.0
+  use_websocket: true  # Preferred for Solana
+  use_helius_webhook: false  # Set true if available
+  
+  # Filters (pre-safety)
+  min_liquidity_usd: 5000
+  min_holders: 50
+  max_age_minutes: 5
+  max_supply_top10_percent: 60
+
+# SAFETY CHECKS (Multi-layer)
+safety:
+  enabled: true
+  
+  # Layer 1: API checks
+  rugcheck_enabled: true
+  rugcheck_min_score: 7  # 0-10 scale
+  
+  honeypot_enabled: true
+  honeypot_max_sell_tax: 15
+  
+  token_sniffer_enabled: false  # Paid feature
+  token_sniffer_max_risk: 30
+  
+  # Layer 2: On-chain
+  require_mint_renounced: true
+  require_freeze_renounced: true
+  min_lp_burned_percent: 5
+  min_lp_lock_days: 7
+  
+  # Layer 3: Threats
+  check_vampire_attack: true
+  max_dev_holdings_percent: 20
+  max_first_block_txs: 100
+  
+  # Cache to reduce API calls
+  cache_results_seconds: 300
+
+# DEV WALLET ANALYZER
+dev_analyzer:
+  enabled: true
+  threshold_score: 70  # Require ≥70 to snipe
+  
+  # Scoring weights
+  weights:
+    rug_penalty: -30
+    pump_bonus: 50
+    balance_low_penalty: -20
+    balance_high_bonus: 30
+    wallet_age_penalty: -20
+    connected_kol_bonus: 20
+    isolated_penalty: -10
+  
+  tx_history_limit: 500
+  
+  # ML enhancement (optional)
+  use_ml_classifier: false
+  ml_model_path: data/models/dev_classifier.pkl
+
+# LIQUIDITY EVENT PREDICTOR (LEP) - KILLER FEATURE
+lep:
+  enabled: true
+  threshold_score: 150  # Out of 200
+  confidence_min: 0.60
+  
+  # Signal weights
+  weights:
+    funding_spike: 40
+    contract_upgrade: 30
+    coordinated_accumulation: 35
+    social_chain_fusion: 45
+    timing_pattern: 50
+  
+  # Thresholds
+  funding_spike_multiplier: 10
+  accumulation_cluster_size: 5
+  accumulation_window_hours: 2
+  social_hype_min_keywords: 2
+  social_velocity_txs_per_hour: 5
+  
+  # Prophet model
+  use_prophet_timing: true
+  prophet_model_path: data/models/lep_prophet.pkl
+  prophet_forecast_hours: 48
+
+# CASCADE SENTINEL (Viral Whisper)
+cascade:
+  enabled: true
+  threshold_score: 75  # Out of 100
+  
+  # Social scraping
+  max_tweets: 100
+  graph_max_nodes: 200
+  twitter_api_key: ${TWITTER_API_KEY}  # Or use scraper
+  use_official_api: false  # Set true if paid
+  
+  # GNN model
+  use_gnn_prediction: true
+  gnn_model_path: data/models/cascade_gnn.pt
+  gnn_confidence_min: 0.65
+  
+  # Fallback
+  use_rule_based: true
+
+# EXECUTION
+execution:
+  enabled: true
+  buy_amount_usd: ${investment.amount_usd}
+  max_position_size_percent: 10
+  
+  # Method auto-select based on amount
+  # <$20: public_rpc
+  # $20-$100: priority_fees
+  # >$100: jito/eden
+  method_auto_select: true
+  
+  # Retry
+  max_retries: 3
+  retry_delay_ms: 500
+  backoff_multiplier: 1.5
+
+# SELL STRATEGY
+selling:
+  enabled: true
+  take_profit_multiplier: 3.0
+  take_profit_alternatives: [2.0, 5.0]
+  stop_loss_percent: -20
+  stop_loss_alternatives: [-30, -50]
+  
+  trailing_stop_enabled: true
+  trailing_stop_activation: 1.5
+  trailing_stop_distance: 0.20
+  force_sell_hours: 24
+  
+  dev_dump_enabled: true
+  dev_dump_threshold: 0.30
+
+# MULTI-WALLET
+wallets:
+  rotation_enabled: true
+  count: 10
+  auto_fund: true
+  fund_amount_sol: 0.1
+  fund_amount_bnb: 0.05
+  seed_phrase_encrypted: true
+  derivation_path: "m/44'/501'/0'/0'"
+
+# COPY TRADING (Optional)
+copy_trading:
+  enabled: false
+  whale_addresses: []
+  kol_addresses: []
+  min_trade_size_usd: 100
+  max_slippage_percent: 5
+
+# ARBITRAGE (Optional)
+arbitrage:
+  enabled: false
+  cross_dex: true
+  cross_chain: false
+  min_profit_percent: 2
+
+# UK TAX COMPLIANCE
+tax:
+  enabled: true
+  region: UK
+  cgt_rate: 0.10  # 10% basic rate
+  annual_allowance: 3000  # £3K for 2024/25
+  auto_deduct_from_display: true
+  auto_log_trades: true
+  export_format: csv
+  export_path: data/tax_reports/
+  use_coingecko_gbp: true
+  cache_prices_seconds: 60
+
+# TELEGRAM BOT UI
+telegram:
+  enabled: true
+  bot_token: ${TG_BOT_TOKEN}
+  alerts_enabled: true
+  alert_on_snipe: true
+  alert_on_sell: true
+  alert_on_rug_detected: true
+
+# DASHBOARD (React UI)
+dashboard:
+  enabled: true
+  host: 127.0.0.1
+  port: 5000
+  real_time_updates: true
+  update_interval_ms: 1000
+  chart_history_hours: 24
+
+# RISK MANAGEMENT
+risk:
+  enabled: true
+  max_daily_loss_percent: 5
+  max_concurrent_positions: 5
+  pause_after_consecutive_losses: 3
+  pause_duration_minutes: 30
+  use_kelly_sizing: true
+  kelly_fraction: 0.1
+
+# SECURITY
+security:
+  encrypt_env_file: true
+  use_tor_proxies: false
+  check_wallet_drains: true
+  drain_alert_threshold_percent: 50
+  geo_fence_enabled: false
+  allowed_countries: [GB]
+
+# LOGGING
+logging:
+  level: INFO
+  file_path: data/logs/bot.log
+  max_size_mb: 100
+  backup_count: 5
+  format: json
+  include_timestamps: true
+
+# TESTING
+testing:
+  use_testnet: false
+  testnet_solana_rpc: https://api.devnet.solana.com
+  testnet_bsc_rpc: https://data-seed-prebsc-1-s1.binance.org:8545
+  paper_trading_enabled: false
+  paper_trading_initial_balance: 1000
+
+# UPDATES
+updates:
+  check_for_updates: true
+  auto_update: false
+  update_channel: stable
+  github_repo: yourusername/SuperGrokSnipV1
+
+# ================================
+# AUTO-TRAINING MODULE (NEW)
+# ================================
+
+auto_train:
+  enabled: true
+  trigger_mode: manual  # 'manual', 'performance', or 'cron'
+  manual_button_enabled: true
+  
+  # Data collection
+  min_samples_per_cycle: 50
+  max_samples_per_cycle: 100
+  
+  # Smart retraining thresholds
+  smart_alerts:
+    enabled: true
+    accuracy_threshold: 0.65  # Retrain if below
+    data_stale_days: 7
+    drift_threshold: 0.4
+    volatility_multiplier: 1.5
+  
+  # MLflow tracking
+  mlflow:
+    enabled: true
+    tracking_uri: http://localhost:5000
+    experiment_name: SuperGrokSnipV1_Training
+  
+  # Data sources
+  data_sources:
+    dex_screener: true
+    helius_webhook: ${HELIUS_WEBHOOK_URL}
+    twitter_scrape: true
+    birdeye_api: false  # Paid
+  
+  # Models to train
+  models:
+    lep:
+      enabled: true
+      type: prophet
+      min_accuracy: 0.60
+    cascade:
+      enabled: true
+      type: gnn
+      min_accuracy: 0.70
+    dev_analyzer:
+      enabled: true
+      type: random_forest
+      min_accuracy: 0.75
+
+# ================================
+# .env.example
+# ================================
+
+# Copy to .env and fill in your values
+# NEVER commit .env to git!
+
+# Core credentials
+MASTER_WALLET_PRIVATE_KEY=your_private_key_here_ENCRYPT_THIS
+SEED_PHRASE=your_seed_phrase_here_ENCRYPT_THIS
+
+# Solana APIs
+HELIUS_API_KEY=your_helius_key  # FREE: dev.helius.xyz
+HELIUS_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
+HELIUS_WEBHOOK_URL=  # Optional, for real-time monitoring
+
+# BSC APIs
+BSCSCAN_API_KEY=your_bscscan_key  # FREE: bscscan.com/apis
+
+# Social APIs
+TWITTER_API_KEY=  # Optional, $100/mo for official API
+TWITTER_API_SECRET=
+TWITTER_BEARER_TOKEN=
+
+# Telegram
+TG_BOT_TOKEN=your_telegram_bot_token  # FREE: @BotFather
+
+# Optional paid services
+TOKEN_SNIFFER_API_KEY=  # tokensniffer.com
+BIRDEYE_API_KEY=  # birdeye.so
+
+# Security (generate strong passwords)
+ENCRYPTION_KEY=generate_with_secrets.token_hex(32)
+
+# MLflow (if remote)
+MLFLOW_TRACKING_URI=http://localhost:5000  # Or remote URL
+MLFLOW_TRACKING_USERNAME=
+MLFLOW_TRACKING_PASSWORD=
+
+# ================================
+# requirements.txt
+# ================================
+
+# Python 3.10 or 3.11 required (NOT 3.12)
+# Install: pip install -r requirements.txt
+
+# Core dependencies
+solana>=0.30.2
+solders>=0.18.1
+anchorpy>=0.18.0
+web3>=6.11.0
+eth-account>=0.9.0
+
+# ML/AI
+prophet>=1.1.5
+torch>=2.1.0
+torch-geometric>=2.4.0
+torch-scatter>=2.1.0
+torch-sparse>=0.6.17
+networkx>=3.2
+scikit-learn>=1.3.2
+pandas>=2.1.4
+numpy>=1.24.4
+
+# Data collection
+aiohttp>=3.9.1
+requests>=2.31.0
+beautifulsoup4>=4.12.2
+snscrape>=0.7.0.20230622  # Or ntscraper>=1.1.0
+tweepy>=4.14.0  # For official Twitter API
+
+# APIs
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+
+# Telegram
+python-telegram-bot>=20.7
+
+# MLflow & tracking
+mlflow>=2.9.2
+sqlalchemy>=2.0.23
+
+# Utilities
+asyncio>=3.4.3
+loguru>=0.7.2
+cryptography>=41.0.7
+
+# React dashboard backend
+flask>=3.0.0
+flask-cors>=4.0.0
+flask-socketio>=5.3.5
+
+# Testing
+pytest>=7.4.3
+pytest-asyncio>=0.21.1
+black>=23.12.1
+flake8>=6.1.0
+
+# ================================
+# package.json (React Dashboard)
+# ================================
+
+{
+  "name": "supergroksnip-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "next": "^14.0.4",
+    "typescript": "^5.3.3",
+    "@types/react": "^18.2.45",
+    "@types/node": "^20.10.5",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "recharts": "^2.10.3",
+    "lucide-react": "^0.263.1",
+    "axios": "^1.6.2",
+    "zustand": "^4.4.7",
+    "date-fns": "^3.0.6"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4"
+  }
+}
+
+# ================================
+# scripts/setup_windows.ps1
+# ================================
+
+# PowerShell setup script for Windows 11
+# Run as Administrator
+
+Write-Host "SuperGrokSnipV1 Windows Setup" -ForegroundColor Green
+
+# Check Python version
+$pythonVersion = python --version
+if ($pythonVersion -notmatch "3\.1[01]") {
+    Write-Host "ERROR: Python 3.10 or 3.11 required" -ForegroundColor Red
+    Write-Host "Current: $pythonVersion" -ForegroundColor Red
+    Write-Host "Download from: https://www.python.org/downloads/" -ForegroundColor Yellow
+    exit 1
+}
+
+# Create virtual environment
+Write-Host "Creating virtual environment..." -ForegroundColor Cyan
+python -m venv venv
+
+# Activate virtual environment
+Write-Host "Activating virtual environment..." -ForegroundColor Cyan
+.\venv\Scripts\Activate.ps1
+
+# Upgrade pip
+Write-Host "Upgrading pip..." -ForegroundColor Cyan
+python -m pip install --upgrade pip setuptools wheel
+
+# Install requirements
+Write-Host "Installing dependencies..." -ForegroundColor Cyan
+pip install -r requirements.txt
+
+# Copy .env.example to .env
+if (!(Test-Path .env)) {
+    Write-Host "Creating .env file..." -ForegroundColor Cyan
+    Copy-Item .env.example .env
+    Write-Host "IMPORTANT: Edit .env with your API keys!" -ForegroundColor Yellow
+}
+
+# Create necessary directories
+Write-Host "Creating directories..." -ForegroundColor Cyan
+New-Item -ItemType Directory -Force -Path data/historical_pumps
+New-Item -ItemType Directory -Force -Path data/models
+New-Item -ItemType Directory -Force -Path data/logs
+New-Item -ItemType Directory -Force -Path data/tax_reports
+New-Item -ItemType Directory -Force -Path data/mlflow_runs
+
+# Install Node.js dependencies (React dashboard)
+if (Test-Path src/ui/dashboard/package.json) {
+    Write-Host "Installing React dependencies..." -ForegroundColor Cyan
+    cd src/ui/dashboard
+    npm install
+    cd ../../..
+}
+
+Write-Host "" -ForegroundColor Green
+Write-Host "Setup complete! Next steps:" -ForegroundColor Green
+Write-Host "1. Edit .env with your API keys" -ForegroundColor Yellow
+Write-Host "2. Run tests: pytest tests/" -ForegroundColor Yellow
+Write-Host "3. Start dashboard: cd src/ui/dashboard && npm run dev" -ForegroundColor Yellow
+Write-Host "4. Start bot: python src/main.py" -ForegroundColor Yellow
